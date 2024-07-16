@@ -9,30 +9,38 @@ import (
 const (
 	screenWidth  = 720
 	screenHeight = 480
-    vel = 10.0
+	vel          = 5.0
 )
 
 type Cat struct {
-	posX    float32
-	posY    float32
-	src     rl.Rectangle
-	dest    rl.Rectangle
-	texture rl.Texture2D
+	posX      float32
+	posY      float32
+	direction rl.Vector2
+	src       rl.Rectangle
+	dest      rl.Rectangle
+	texture   rl.Texture2D
 }
 
-func input(c *Cat) {
+func handleMovement(c *Cat) {
 	if rl.IsKeyDown(rl.KeyW) {
-		c.dest.Y -= vel
+        c.direction.X = 0
+        c.direction.Y = -1
 	}
 	if rl.IsKeyDown(rl.KeyS) {
-		c.dest.Y += vel
+        c.direction.X = 0
+        c.direction.Y = 1
 	}
 	if rl.IsKeyDown(rl.KeyA) {
-		c.dest.X -= vel
+        c.direction.X = -1
+        c.direction.Y = 0
 	}
 	if rl.IsKeyDown(rl.KeyD) {
-		c.dest.X += vel
+        c.direction.X = 1
+        c.direction.Y = 0
 	}
+
+    c.dest.X += c.direction.X * vel
+    c.dest.Y += c.direction.Y * vel
 }
 
 func render(c *Cat) {
@@ -53,6 +61,7 @@ func main() {
 	rl.SetTargetFPS(60)
 
 	cat := new(Cat)
+    cat.direction = rl.Vector2{X: 1, Y: 0} // default direction: right
 	cat.texture = rl.LoadTexture("./assets/Block.png")
 	defer rl.UnloadTexture(cat.texture)
 
@@ -60,7 +69,7 @@ func main() {
 	cat.dest = rl.NewRectangle(200, 200, 48, 48)
 
 	for !rl.WindowShouldClose() {
-		input(cat)
+		handleMovement(cat)
 		render(cat)
 	}
 }
