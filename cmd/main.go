@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-    "math/rand/v2"
-    "time"
+	"math/rand/v2"
+	"time"
+    "slices"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -18,9 +19,9 @@ const (
 )
 
 type Cat struct {
-    dead      bool
-    src       rl.Rectangle
-    dest      rl.Rectangle
+	dead      bool
+	blocks    []rl.Vector2
+	src       rl.Rectangle
 	direction rl.Vector2
 	texture   rl.Texture2D
 }
@@ -31,70 +32,79 @@ type Food struct {
 	texture rl.Texture2D
 }
 
-func spawnFood(f *Food) {
-    row := rand.IntN(tileNum)
-    col := rand.IntN(tileNum)
+func (f *Food) spawn() {
+	row := rand.IntN(tileNum)
+	col := rand.IntN(tileNum)
 
-    f.dest.X = float32(row) * tileSize
-    f.dest.Y = float32(col) * tileSize
+	f.dest.X = float32(row) * tileSize
+	f.dest.Y = float32(col) * tileSize
 }
 
 func (c *Cat) checkOutOfBounds() {
-    if c.dest.X > screenWidth || c.dest.X < 0 || c.dest.Y > screenHeight || c.dest.Y < 0 {
-        fmt.Println("+ PLAYER DIED")
-        c.dead = true
-        c.respawn()
-    }
+    head := c.blocks[0]
+	if head.X > screenWidth || head.X < 0 || head.Y > screenHeight || head.Y < 0 {
+		fmt.Println("+ PLAYER DIED")
+		c.dead = true
+        time.Sleep(2 * time.Second)
+		c.spawn()
+	}
 }
 
-func (c *Cat) respawn() {
-    time.Sleep(2 * time.Second)
-    c.dest.X = tileSize * (tileNum / 2)
-    c.dest.Y = tileSize * (tileNum / 2)
-    c.direction = rl.Vector2{X: 1, Y: 0}
-    // TODO: reset cat size
-    // TODO: reset game score
+func (c *Cat) spawn() {
+    c.direction = rl.Vector2{X: 1, Y: 0} // default direction: right
+	var mapMiddle float32 = tileSize * (tileNum / 2)
+    c.blocks = []rl.Vector2{
+		{X: mapMiddle, Y: mapMiddle},
+		{X: mapMiddle - tileSize, Y: mapMiddle},
+		{X: mapMiddle - 2*tileSize, Y: mapMiddle}}
+	// TODO: reset game score
 
+	c.dead = false
+}
 
-    c.dead = false
+func (c *Cat) grow() {
+    // TODO: append blocks and increase score
 }
 
 func (c *Cat) move() {
-    dir := c.direction
+	dir := c.direction
 
-    switch {
-    case dir.X == 1 && dir.Y == 0:
-        c.dest.X += tileSize
-    case dir.X == -1 && dir.Y == 0:
-        c.dest.X -= tileSize
-    case dir.X == 0 && dir.Y == 1:
-        c.dest.Y += tileSize
-    case dir.X == 0 && dir.Y == -1:
-        c.dest.Y -= tileSize
-    }
-    c.checkOutOfBounds()
+	c.blocks = c.blocks[:len(c.blocks)-1]
+    head := c.blocks[0]
+
+	switch {
+	case dir.X == 1 && dir.Y == 0:
+        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X + tileSize, Y: head.Y})
+	case dir.X == -1 && dir.Y == 0:
+        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X - tileSize, Y: head.Y})
+	case dir.X == 0 && dir.Y == 1:
+        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X, Y: head.Y + tileSize})
+	case dir.X == 0 && dir.Y == -1:
+        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X, Y: head.Y - tileSize})
+	}
+	c.checkOutOfBounds()
 }
 
 func handleMovement(c *Cat) {
-	if rl.IsKeyDown(rl.KeyW) {
+	if rl.IsKeyDown(rl.KeyW) && c.direction.Y != 1 {
 		c.direction.X = 0
 		c.direction.Y = -1
 	}
-	if rl.IsKeyDown(rl.KeyS) {
+	if rl.IsKeyDown(rl.KeyS) && c.direction.Y != -1 {
 		c.direction.X = 0
 		c.direction.Y = 1
 	}
-	if rl.IsKeyDown(rl.KeyA) {
+	if rl.IsKeyDown(rl.KeyA) && c.direction.X != 1 {
 		c.direction.X = -1
 		c.direction.Y = 0
 	}
-	if rl.IsKeyDown(rl.KeyD) {
+	if rl.IsKeyDown(rl.KeyD) && c.direction.X != -1 {
 		c.direction.X = 1
 		c.direction.Y = 0
 	}
 }
 
-func render(c *Cat, food *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
+func render(c *Cat, f *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.NewColor(147, 211, 196, 255))
 
@@ -105,20 +115,27 @@ func render(c *Cat, food *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) 
 			rl.DrawTexturePro(grassSprite, tileSrc, tileDest, rl.NewVector2(tileDest.Width, tileDest.Height), 0, rl.White)
 		}
 	}
+	if c.dead {
+		rl.DrawText("YOU DIED", tileSize*(tileNum/2), tileSize*(tileNum/2), 72, rl.NewColor(255, 0, 0, 255))
+	}
 
-    if c.dead {
-        rl.DrawText("YOU DIED", tileSize * (tileNum / 2), tileSize * (tileNum / 2), 72, rl.NewColor(255, 0, 0, 255))
-    }
+    head := c.blocks[0]
+	if rl.CheckCollisionRecs(rl.NewRectangle(head.X, head.Y, tileSize, tileSize), f.dest) {
+		f.spawn()
+		c.grow()
+	}
 
-	rl.DrawTexturePro(c.texture, c.src, c.dest, rl.NewVector2(c.dest.Width, c.dest.Height), 0, rl.White)
-	rl.DrawTexturePro(food.texture, food.src, food.dest, rl.NewVector2(food.dest.Width, food.dest.Height), 0, rl.White)
+	for _, block := range c.blocks {
+		dest := rl.NewRectangle(block.X, block.Y, tileSize, tileSize)
+		rl.DrawTexturePro(c.texture, c.src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
+	}
+	rl.DrawTexturePro(f.texture, f.src, f.dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
 
 	rl.EndDrawing()
 }
 
 func main() {
-	fmt.Println("Peak gameplay")
-	rl.InitWindow(screenWidth, screenHeight, "DEMO")
+	rl.InitWindow(screenWidth, screenHeight, "Stretchy Cats")
 	defer rl.CloseWindow()
 	rl.SetExitKey(0)
 	rl.SetTargetFPS(60)
@@ -130,36 +147,35 @@ func main() {
 	defer rl.UnloadTexture(grassSprite)
 
 	cat := new(Cat)
-	cat.direction = rl.Vector2{X: 1, Y: 0} // default direction: right
 	cat.src = rl.NewRectangle(0, 0, 40, 40)
-	cat.dest = rl.NewRectangle(tileSize * (tileNum / 2), tileSize * (tileNum / 2), 48, 48)
+    cat.spawn()
 	cat.texture = rl.LoadTexture("./assets/Block.png")
 	defer rl.UnloadTexture(cat.texture)
 
 	food := new(Food)
 	food.src = rl.NewRectangle(0, 0, 48, 32)
-    food.dest.Width = tileSize
-    food.dest.Height = tileSize
+	food.dest.Width = tileSize
+	food.dest.Height = tileSize
 	food.texture = rl.LoadTexture("./assets/fish.png")
 	defer rl.UnloadTexture(food.texture)
 
-    ticker := time.NewTicker(200 * time.Millisecond)
-    done := make(chan bool)
-    go func() {
-        for {
-            select {
-            case <- done:
-                return
-            case <- ticker.C:
-                cat.move()
-            }
-        }
-    }()
+	ticker := time.NewTicker(200 * time.Millisecond)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				cat.move()
+			}
+		}
+	}()
 
-    spawnFood(food)
+	food.spawn()
 	for !rl.WindowShouldClose() {
 		handleMovement(cat)
 		render(cat, food, grassSprite, tileSrc)
 	}
-    ticker.Stop()
+	ticker.Stop()
 }
