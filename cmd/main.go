@@ -15,24 +15,43 @@ const (
 	screenHeight = 960
 	tileSize     = 48
 	tileNum      = 20
-	vel          = 5.0
 )
 
 type Cat struct {
-	posX      float32
-	posY      float32
+    src       rl.Rectangle
+    dest      rl.Rectangle
 	direction rl.Vector2
-	src       rl.Rectangle
-	dest      rl.Rectangle
 	texture   rl.Texture2D
 }
 
 type Food struct {
-	posX    float32
-	posY    float32
 	src     rl.Rectangle
 	dest    rl.Rectangle
 	texture rl.Texture2D
+}
+
+func spawnFood(f *Food) {
+    row := rand.IntN(tileNum)
+    col := rand.IntN(tileNum)
+
+    f.dest.X = float32(row) * tileSize
+    f.dest.Y = float32(col) * tileSize
+}
+
+func (c *Cat) checkOutOfBounds() {
+    if c.dest.X > screenWidth || c.dest.X < 0 || c.dest.Y > screenHeight || c.dest.Y < 0 {
+        fmt.Println("+ PLAYER DIED")
+        // TODO: display death screen
+        c.respawn()
+    }
+}
+
+func (c *Cat) respawn() {
+    c.dest.X = tileSize * (tileNum / 2)
+    c.dest.Y = tileSize * (tileNum / 2)
+    c.direction = rl.Vector2{X: 1, Y: 0}
+    // TODO: reset cat size
+    // TODO: reset game score
 }
 
 func (c *Cat) move() {
@@ -48,6 +67,7 @@ func (c *Cat) move() {
     case dir.X == 0 && dir.Y == -1:
         c.dest.Y -= tileSize
     }
+    c.checkOutOfBounds()
 }
 
 func handleMovement(c *Cat) {
@@ -67,14 +87,6 @@ func handleMovement(c *Cat) {
 		c.direction.X = 1
 		c.direction.Y = 0
 	}
-}
-
-func spawnFood(f *Food) {
-    row := rand.IntN(tileNum)
-    col := rand.IntN(tileNum)
-
-    f.dest.X = float32(row) * tileSize
-    f.dest.Y = float32(col) * tileSize
 }
 
 func render(c *Cat, food *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
