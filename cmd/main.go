@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 	"time"
-    "slices"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -19,11 +19,11 @@ const (
 )
 
 type Cat struct {
-	dead      bool
-	blocks    []rl.Vector2
-	src       rl.Rectangle
-	direction rl.Vector2
-	texture   rl.Texture2D
+	dead    bool
+	blocks  []rl.Vector2
+	src     rl.Rectangle
+	dir     rl.Vector2
+	texture rl.Texture2D
 }
 
 type Food struct {
@@ -41,19 +41,19 @@ func (f *Food) spawn() {
 }
 
 func (c *Cat) checkOutOfBounds() {
-    head := c.blocks[0]
+	head := c.blocks[0]
 	if head.X > screenWidth || head.X < 0 || head.Y > screenHeight || head.Y < 0 {
 		fmt.Println("+ PLAYER DIED")
 		c.dead = true
-        time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
 		c.spawn()
 	}
 }
 
 func (c *Cat) spawn() {
-    c.direction = rl.Vector2{X: 1, Y: 0} // default direction: right
+	c.dir = rl.Vector2{X: 1, Y: 0} // default direction: right
 	var mapMiddle float32 = tileSize * (tileNum / 2)
-    c.blocks = []rl.Vector2{
+	c.blocks = []rl.Vector2{
 		{X: mapMiddle, Y: mapMiddle},
 		{X: mapMiddle - tileSize, Y: mapMiddle},
 		{X: mapMiddle - 2*tileSize, Y: mapMiddle}}
@@ -63,44 +63,37 @@ func (c *Cat) spawn() {
 }
 
 func (c *Cat) grow() {
-    // TODO: append blocks and increase score
+	// TODO: increase score
+	tail := c.blocks[len(c.blocks)-1]
+	c.blocks = append(c.blocks,
+		rl.Vector2{X: tail.X + c.dir.X*float32(tileSize), Y: tail.Y + c.dir.Y*float32(tileSize)})
 }
 
 func (c *Cat) move() {
-	dir := c.direction
-
+	dir := c.dir
 	c.blocks = c.blocks[:len(c.blocks)-1]
-    head := c.blocks[0]
+	head := c.blocks[0]
+	c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X + dir.X*tileSize, Y: head.Y + dir.Y*tileSize})
 
-	switch {
-	case dir.X == 1 && dir.Y == 0:
-        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X + tileSize, Y: head.Y})
-	case dir.X == -1 && dir.Y == 0:
-        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X - tileSize, Y: head.Y})
-	case dir.X == 0 && dir.Y == 1:
-        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X, Y: head.Y + tileSize})
-	case dir.X == 0 && dir.Y == -1:
-        c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X, Y: head.Y - tileSize})
-	}
 	c.checkOutOfBounds()
 }
 
 func handleMovement(c *Cat) {
-	if rl.IsKeyDown(rl.KeyW) && c.direction.Y != 1 {
-		c.direction.X = 0
-		c.direction.Y = -1
+	if rl.IsKeyDown(rl.KeyW) && c.dir.Y != 1 {
+		c.dir.X = 0
+		c.dir.Y = -1
 	}
-	if rl.IsKeyDown(rl.KeyS) && c.direction.Y != -1 {
-		c.direction.X = 0
-		c.direction.Y = 1
+	if rl.IsKeyDown(rl.KeyS) && c.dir.Y != -1 {
+		c.dir.X = 0
+		c.dir.Y = 1
 	}
-	if rl.IsKeyDown(rl.KeyA) && c.direction.X != 1 {
-		c.direction.X = -1
-		c.direction.Y = 0
+	if rl.IsKeyDown(rl.KeyA) && c.dir.X != 1 {
+		c.dir.X = -1
+		c.dir.Y = 0
 	}
-	if rl.IsKeyDown(rl.KeyD) && c.direction.X != -1 {
-		c.direction.X = 1
-		c.direction.Y = 0
+	if rl.IsKeyDown(rl.KeyD) && c.dir.X != -1 {
+		c.dir.X = 1
+		c.dir.Y = 0
 	}
 }
 
@@ -119,7 +112,7 @@ func render(c *Cat, f *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
 		rl.DrawText("YOU DIED", tileSize*(tileNum/2), tileSize*(tileNum/2), 72, rl.NewColor(255, 0, 0, 255))
 	}
 
-    head := c.blocks[0]
+	head := c.blocks[0]
 	if rl.CheckCollisionRecs(rl.NewRectangle(head.X, head.Y, tileSize, tileSize), f.dest) {
 		f.spawn()
 		c.grow()
@@ -148,7 +141,7 @@ func main() {
 
 	cat := new(Cat)
 	cat.src = rl.NewRectangle(0, 0, 40, 40)
-    cat.spawn()
+	cat.spawn()
 	cat.texture = rl.LoadTexture("./assets/Block.png")
 	defer rl.UnloadTexture(cat.texture)
 
