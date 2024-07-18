@@ -18,6 +18,7 @@ const (
 )
 
 type Cat struct {
+    dead      bool
     src       rl.Rectangle
     dest      rl.Rectangle
 	direction rl.Vector2
@@ -41,17 +42,21 @@ func spawnFood(f *Food) {
 func (c *Cat) checkOutOfBounds() {
     if c.dest.X > screenWidth || c.dest.X < 0 || c.dest.Y > screenHeight || c.dest.Y < 0 {
         fmt.Println("+ PLAYER DIED")
-        // TODO: display death screen
+        c.dead = true
         c.respawn()
     }
 }
 
 func (c *Cat) respawn() {
+    time.Sleep(2 * time.Second)
     c.dest.X = tileSize * (tileNum / 2)
     c.dest.Y = tileSize * (tileNum / 2)
     c.direction = rl.Vector2{X: 1, Y: 0}
     // TODO: reset cat size
     // TODO: reset game score
+
+
+    c.dead = false
 }
 
 func (c *Cat) move() {
@@ -100,6 +105,10 @@ func render(c *Cat, food *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) 
 			rl.DrawTexturePro(grassSprite, tileSrc, tileDest, rl.NewVector2(tileDest.Width, tileDest.Height), 0, rl.White)
 		}
 	}
+
+    if c.dead {
+        rl.DrawText("YOU DIED", tileSize * (tileNum / 2), tileSize * (tileNum / 2), 72, rl.NewColor(255, 0, 0, 255))
+    }
 
 	rl.DrawTexturePro(c.texture, c.src, c.dest, rl.NewVector2(c.dest.Width, c.dest.Height), 0, rl.White)
 	rl.DrawTexturePro(food.texture, food.src, food.dest, rl.NewVector2(food.dest.Width, food.dest.Height), 0, rl.White)
