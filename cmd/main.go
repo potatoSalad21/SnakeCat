@@ -46,12 +46,23 @@ func (f *Food) spawnFood() {
 
 func (c *Cat) checkOutOfBounds() {
 	head := c.blocks[0]
-	if head.X > screenWidth || head.X < 0 || head.Y > screenHeight || head.Y < 0 {
+	if head.X > screenWidth || head.X <= 0 || head.Y > screenHeight || head.Y <= 0 {
 		fmt.Println("+ PLAYER DIED")
 		c.dead = true
 		time.Sleep(2 * time.Second)
 		c.spawnCat()
 	}
+}
+
+func (c *Cat) checkCollision() {
+    headRec := rl.NewRectangle(c.blocks[0].X, c.blocks[0].Y, tileSize, tileSize)
+    for _, block := range c.blocks[1:] {
+        if rl.CheckCollisionPointRec(block, headRec) {
+            c.dead = true
+            time.Sleep(2 * time.Second)
+            c.spawnCat()
+        }
+    }
 }
 
 func (c *Cat) spawnCat() {
@@ -80,6 +91,7 @@ func (c *Cat) move() {
 	c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X + dir.X*tileSize, Y: head.Y + dir.Y*tileSize})
 
 	c.checkOutOfBounds()
+    c.checkCollision()
 }
 
 func handleMovement(c *Cat) {
