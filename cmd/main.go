@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+    "strconv"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var tileDest rl.Rectangle
+var (
+    tileDest rl.Rectangle
+    score    int
+)
 
 const (
 	screenWidth  = 960
@@ -32,9 +36,9 @@ type Food struct {
 	texture rl.Texture2D
 }
 
-func (f *Food) spawn() {
-	row := rand.IntN(tileNum)
-	col := rand.IntN(tileNum)
+func (f *Food) spawnFood() {
+	row := rand.IntN(tileNum) + 1
+	col := rand.IntN(tileNum) + 1
 
 	f.dest.X = float32(row) * tileSize
 	f.dest.Y = float32(col) * tileSize
@@ -46,24 +50,24 @@ func (c *Cat) checkOutOfBounds() {
 		fmt.Println("+ PLAYER DIED")
 		c.dead = true
 		time.Sleep(2 * time.Second)
-		c.spawn()
+		c.spawnCat()
 	}
 }
 
-func (c *Cat) spawn() {
+func (c *Cat) spawnCat() {
 	c.dir = rl.Vector2{X: 1, Y: 0} // default direction: right
 	var mapMiddle float32 = tileSize * (tileNum / 2)
 	c.blocks = []rl.Vector2{
 		{X: mapMiddle, Y: mapMiddle},
 		{X: mapMiddle - tileSize, Y: mapMiddle},
 		{X: mapMiddle - 2*tileSize, Y: mapMiddle}}
-	// TODO: reset game score
 
+    score = 0
 	c.dead = false
 }
 
 func (c *Cat) grow() {
-	// TODO: increase score
+    score++
 	tail := c.blocks[len(c.blocks)-1]
 	c.blocks = append(c.blocks,
 		rl.Vector2{X: tail.X + c.dir.X*float32(tileSize), Y: tail.Y + c.dir.Y*float32(tileSize)})
@@ -114,7 +118,7 @@ func render(c *Cat, f *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
 
 	head := c.blocks[0]
 	if rl.CheckCollisionRecs(rl.NewRectangle(head.X, head.Y, tileSize, tileSize), f.dest) {
-		f.spawn()
+		f.spawnFood()
 		c.grow()
 	}
 
@@ -123,6 +127,7 @@ func render(c *Cat, f *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
 		rl.DrawTexturePro(c.texture, c.src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
 	}
 	rl.DrawTexturePro(f.texture, f.src, f.dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
+    rl.DrawText(strconv.Itoa(score), 10, 0, 64, rl.NewColor(200, 100, 20, 255))
 
 	rl.EndDrawing()
 }
@@ -141,7 +146,7 @@ func main() {
 
 	cat := new(Cat)
 	cat.src = rl.NewRectangle(0, 0, 40, 40)
-	cat.spawn()
+	cat.spawnCat()
 	cat.texture = rl.LoadTexture("./assets/Block.png")
 	defer rl.UnloadTexture(cat.texture)
 
@@ -165,7 +170,7 @@ func main() {
 		}
 	}()
 
-	food.spawn()
+	food.spawnFood()
 	for !rl.WindowShouldClose() {
 		handleMovement(cat)
 		render(cat, food, grassSprite, tileSrc)
