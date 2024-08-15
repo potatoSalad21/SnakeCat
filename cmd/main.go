@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
-    "strconv"
+	"strconv"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 var (
-    tileDest rl.Rectangle
-    score    int
+	tileDest rl.Rectangle
+	score    int
 )
 
 const (
@@ -24,10 +24,15 @@ const (
 
 type Cat struct {
 	dead    bool
-	blocks  []rl.Vector2
+	blocks  []*CatBlock
 	src     rl.Rectangle
 	dir     rl.Vector2
-	texture rl.Texture2D
+	texture map[string]rl.Texture2D
+}
+
+type CatBlock struct {
+	vec rl.Vector2
+	dir rl.Vector2
 }
 
 type Food struct {
@@ -45,7 +50,7 @@ func (f *Food) spawnFood() {
 }
 
 func (c *Cat) checkOutOfBounds() {
-	head := c.blocks[0]
+	head := c.blocks[0].vec
 	if head.X > screenWidth || head.X <= 0 || head.Y > screenHeight || head.Y <= 0 {
 		fmt.Println("+ PLAYER DIED")
 		c.dead = true
@@ -55,61 +60,105 @@ func (c *Cat) checkOutOfBounds() {
 }
 
 func (c *Cat) checkCollision() {
-    headRec := rl.NewRectangle(c.blocks[0].X, c.blocks[0].Y, tileSize, tileSize)
-    for _, block := range c.blocks[1:] {
-        if rl.CheckCollisionPointRec(block, headRec) {
-            c.dead = true
-            time.Sleep(2 * time.Second)
-            c.spawnCat()
-        }
-    }
+	headRec := rl.NewRectangle(c.blocks[0].vec.X, c.blocks[0].vec.Y, tileSize, tileSize)
+	for _, block := range c.blocks[1:] {
+		if rl.CheckCollisionPointRec(block.vec, headRec) {
+			c.dead = true
+			time.Sleep(2 * time.Second)
+			c.spawnCat()
+		}
+	}
 }
 
 func (c *Cat) spawnCat() {
-	c.dir = rl.Vector2{X: 1, Y: 0} // default direction: right
+	c.blocks = nil
 	var mapMiddle float32 = tileSize * (tileNum / 2)
-	c.blocks = []rl.Vector2{
-		{X: mapMiddle, Y: mapMiddle},
-		{X: mapMiddle - tileSize, Y: mapMiddle},
-		{X: mapMiddle - 2*tileSize, Y: mapMiddle}}
+	for i := 0; i < 3; i++ {
+		block := CatBlock{
+			vec: rl.Vector2{
+				X: mapMiddle - float32(tileSize*i),
+				Y: mapMiddle,
+			},
+			dir: rl.Vector2{ // default direction: right
+				X: 1,
+				Y: 0,
+			},
+		}
+		c.blocks = append(c.blocks, &block)
+	}
 
-    score = 0
+	score = 0
 	c.dead = false
 }
 
+func (c *Cat) draw() {
+	for i, block := range c.blocks {
+		dest := rl.NewRectangle(block.vec.X, block.vec.Y, tileSize, tileSize)
+		var texture rl.Texture2D
+
+		if i == 0 {
+			texture = c.texture["head"]
+		} else {
+			texture = c.texture["body"]
+		}
+
+		rl.DrawTexturePro(texture, c.src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
+	}
+}
+
 func (c *Cat) grow() {
-    score++
+	score++
 	tail := c.blocks[len(c.blocks)-1]
-	c.blocks = append(c.blocks,
-		rl.Vector2{X: tail.X + c.dir.X*float32(tileSize), Y: tail.Y + c.dir.Y*float32(tileSize)})
+	block := CatBlock{
+		vec: rl.Vector2{
+			X: tail.vec.X + tail.dir.X*float32(tileSize),
+			Y: tail.vec.Y + tail.dir.Y*float32(tileSize),
+		},
+		dir: rl.Vector2{
+			X: tail.dir.X,
+			Y: tail.dir.Y,
+		},
+	}
+
+	c.blocks = append(c.blocks, &block)
 }
 
 func (c *Cat) move() {
-	dir := c.dir
 	c.blocks = c.blocks[:len(c.blocks)-1]
 	head := c.blocks[0]
-	c.blocks = slices.Insert(c.blocks, 0, rl.Vector2{X: head.X + dir.X*tileSize, Y: head.Y + dir.Y*tileSize})
+	block := CatBlock{
+		vec: rl.Vector2{
+			X: head.vec.X + head.dir.X*float32(tileSize),
+			Y: head.vec.Y + head.dir.Y*float32(tileSize),
+		},
+		dir: rl.Vector2{
+			X: head.dir.X,
+			Y: head.dir.Y,
+		},
+	}
+	c.blocks = slices.Insert(c.blocks, 0, &block)
 
 	c.checkOutOfBounds()
-    c.checkCollision()
+	c.checkCollision()
 }
 
 func handleMovement(c *Cat) {
-	if rl.IsKeyDown(rl.KeyW) && c.dir.Y != 1 {
-		c.dir.X = 0
-		c.dir.Y = -1
+	head := c.blocks[0]
+	if rl.IsKeyDown(rl.KeyW) && head.dir.Y != 1 {
+		head.dir.X = 0
+		head.dir.Y = -1
 	}
-	if rl.IsKeyDown(rl.KeyS) && c.dir.Y != -1 {
-		c.dir.X = 0
-		c.dir.Y = 1
+	if rl.IsKeyDown(rl.KeyS) && head.dir.Y != -1 {
+		head.dir.X = 0
+		head.dir.Y = 1
 	}
-	if rl.IsKeyDown(rl.KeyA) && c.dir.X != 1 {
-		c.dir.X = -1
-		c.dir.Y = 0
+	if rl.IsKeyDown(rl.KeyA) && head.dir.X != 1 {
+		head.dir.X = -1
+		head.dir.Y = 0
 	}
-	if rl.IsKeyDown(rl.KeyD) && c.dir.X != -1 {
-		c.dir.X = 1
-		c.dir.Y = 0
+	if rl.IsKeyDown(rl.KeyD) && head.dir.X != -1 {
+		head.dir.X = 1
+		head.dir.Y = 0
 	}
 }
 
@@ -129,17 +178,14 @@ func render(c *Cat, f *Food, grassSprite rl.Texture2D, tileSrc rl.Rectangle) {
 	}
 
 	head := c.blocks[0]
-	if rl.CheckCollisionRecs(rl.NewRectangle(head.X, head.Y, tileSize, tileSize), f.dest) {
+	if rl.CheckCollisionRecs(rl.NewRectangle(head.vec.X, head.vec.Y, tileSize, tileSize), f.dest) {
 		f.spawnFood()
 		c.grow()
 	}
 
-	for _, block := range c.blocks {
-		dest := rl.NewRectangle(block.X, block.Y, tileSize, tileSize)
-		rl.DrawTexturePro(c.texture, c.src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
-	}
+	c.draw()
 	rl.DrawTexturePro(f.texture, f.src, f.dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
-    rl.DrawText(strconv.Itoa(score), 10, 0, 64, rl.NewColor(200, 100, 20, 255))
+	rl.DrawText(strconv.Itoa(score), 10, 0, 64, rl.NewColor(200, 100, 20, 255))
 
 	rl.EndDrawing()
 }
@@ -159,8 +205,12 @@ func main() {
 	cat := new(Cat)
 	cat.src = rl.NewRectangle(0, 0, 40, 40)
 	cat.spawnCat()
-	cat.texture = rl.LoadTexture("./assets/Block.png")
-	defer rl.UnloadTexture(cat.texture)
+
+	cat.texture = make(map[string]rl.Texture2D)
+	cat.texture["head"] = rl.LoadTexture("./assets/Block.png")
+	cat.texture["body"] = rl.LoadTexture("./assets/Block.png")
+	defer rl.UnloadTexture(cat.texture["head"])
+	defer rl.UnloadTexture(cat.texture["body"])
 
 	food := new(Food)
 	food.src = rl.NewRectangle(0, 0, 48, 32)
@@ -188,4 +238,5 @@ func main() {
 		render(cat, food, grassSprite, tileSrc)
 	}
 	ticker.Stop()
+	close(done)
 }
