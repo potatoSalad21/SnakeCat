@@ -96,8 +96,11 @@ func (c *Cat) draw() {
 		dest := rl.NewRectangle(block.vec.X, block.vec.Y, tileSize, tileSize)
 		var texture rl.Texture2D
 
+		// TODO: draw textures based on the body part direction
 		if i == 0 {
 			texture = c.texture["head"]
+		} else if i == len(c.blocks)-1 {
+			texture = c.texture["tail"]
 		} else {
 			texture = c.texture["body"]
 		}
@@ -207,10 +210,12 @@ func main() {
 	cat.spawnCat()
 
 	cat.texture = make(map[string]rl.Texture2D)
-	cat.texture["head"] = rl.LoadTexture("./assets/Block.png")
-	cat.texture["body"] = rl.LoadTexture("./assets/Block.png")
+	cat.texture["head"] = rl.LoadTexture("./assets/cathead.png")
+	cat.texture["body"] = rl.LoadTexture("./assets/catbody.png")
+	cat.texture["tail"] = rl.LoadTexture("./assets/catbutt.png")
 	defer rl.UnloadTexture(cat.texture["head"])
 	defer rl.UnloadTexture(cat.texture["body"])
+	defer rl.UnloadTexture(cat.texture["tail"])
 
 	food := new(Food)
 	food.src = rl.NewRectangle(0, 0, 48, 32)
