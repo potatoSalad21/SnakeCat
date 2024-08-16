@@ -93,19 +93,33 @@ func (c *Cat) spawnCat() {
 
 func (c *Cat) draw() {
 	for i, block := range c.blocks {
+		src := c.src
 		dest := rl.NewRectangle(block.vec.X, block.vec.Y, tileSize, tileSize)
 		var texture rl.Texture2D
 
-		// TODO: draw textures based on the body part direction
 		if i == 0 {
 			texture = c.texture["head"]
 		} else if i == len(c.blocks)-1 {
-			texture = c.texture["tail"]
+			if block.dir.X == 0 {
+				texture = c.texture["tailV"]
+			} else if block.dir.Y == 0 {
+				texture = c.texture["tailH"]
+			}
 		} else {
-			texture = c.texture["body"]
+			if block.dir.X == 0 {
+				texture = c.texture["bodyV"]
+			} else if block.dir.Y == 0 {
+				texture = c.texture["bodyH"]
+			}
 		}
 
-		rl.DrawTexturePro(texture, c.src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
+		if block.dir.Y == 0 {
+			src.Width *= -block.dir.X
+		} else {
+			src.Height *= -block.dir.Y
+		}
+
+		rl.DrawTexturePro(texture, src, dest, rl.NewVector2(tileSize, tileSize), 0, rl.White)
 	}
 }
 
@@ -211,11 +225,15 @@ func main() {
 
 	cat.texture = make(map[string]rl.Texture2D)
 	cat.texture["head"] = rl.LoadTexture("./assets/cathead.png")
-	cat.texture["body"] = rl.LoadTexture("./assets/catbody.png")
-	cat.texture["tail"] = rl.LoadTexture("./assets/catbutt.png")
+	cat.texture["bodyV"] = rl.LoadTexture("./assets/catbodyV.png")
+	cat.texture["bodyH"] = rl.LoadTexture("./assets/catbodyH.png")
+	cat.texture["tailV"] = rl.LoadTexture("./assets/catbuttV.png")
+	cat.texture["tailH"] = rl.LoadTexture("./assets/catbuttH.png")
 	defer rl.UnloadTexture(cat.texture["head"])
-	defer rl.UnloadTexture(cat.texture["body"])
-	defer rl.UnloadTexture(cat.texture["tail"])
+	defer rl.UnloadTexture(cat.texture["bodyV"])
+	defer rl.UnloadTexture(cat.texture["bodyH"])
+	defer rl.UnloadTexture(cat.texture["tailV"])
+	defer rl.UnloadTexture(cat.texture["tailH"])
 
 	food := new(Food)
 	food.src = rl.NewRectangle(0, 0, 48, 32)
