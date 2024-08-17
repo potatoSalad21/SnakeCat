@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"slices"
 	"strconv"
@@ -91,12 +92,39 @@ func (c *Cat) spawnCat() {
 	c.dead = false
 }
 
+func isCorner(prev, mid rl.Vector2) bool {
+	if prev.X == mid.X || prev.Y == mid.Y {
+		return false
+	}
+	return true
+}
+
+func addTurnTexture(textures map[string]rl.Texture2D, prev, corner rl.Vector2) rl.Texture2D {
+	if prev.Y == -1 {
+		if corner.X == 1 {
+			log.Println(corner.X)
+			return textures["sideTR"]
+		}
+		return textures["sideTL"]
+	} else if prev.Y == 1 {
+		if prev.X == 1 {
+			return textures["sideBR"]
+		}
+		return textures["sideBL"]
+	} else {
+		if prev.X == 1 {
+			return textures["sideBL"]
+		}
+		return textures["sideBR"]
+	}
+}
+
 func (c *Cat) draw() {
 	for i, block := range c.blocks {
 		src := c.src
 		dest := rl.NewRectangle(block.vec.X, block.vec.Y, tileSize, tileSize)
-		var texture rl.Texture2D
 
+		var texture rl.Texture2D
 		if i == 0 {
 			texture = c.texture["head"]
 		} else if i == len(c.blocks)-1 {
@@ -106,10 +134,18 @@ func (c *Cat) draw() {
 				texture = c.texture["tailH"]
 			}
 		} else {
-			if block.dir.X == 0 {
-				texture = c.texture["bodyV"]
-			} else if block.dir.Y == 0 {
-				texture = c.texture["bodyH"]
+			var (
+				prev = c.blocks[i+1].dir
+				mid  = block.dir
+			)
+			if i != 0 && i != len(c.blocks)-1 && isCorner(prev, mid) {
+				texture = addTurnTexture(c.texture, prev, mid)
+			} else {
+				if block.dir.X == 0 {
+					texture = c.texture["bodyV"]
+				} else if block.dir.Y == 0 {
+					texture = c.texture["bodyH"]
+				}
 			}
 		}
 
@@ -223,17 +259,20 @@ func main() {
 	cat.src = rl.NewRectangle(0, 0, 40, 40)
 	cat.spawnCat()
 
-	cat.texture = make(map[string]rl.Texture2D)
-	cat.texture["head"] = rl.LoadTexture("./assets/cathead.png")
-	cat.texture["bodyV"] = rl.LoadTexture("./assets/catbodyV.png")
-	cat.texture["bodyH"] = rl.LoadTexture("./assets/catbodyH.png")
-	cat.texture["tailV"] = rl.LoadTexture("./assets/catbuttV.png")
-	cat.texture["tailH"] = rl.LoadTexture("./assets/catbuttH.png")
-	defer rl.UnloadTexture(cat.texture["head"])
-	defer rl.UnloadTexture(cat.texture["bodyV"])
-	defer rl.UnloadTexture(cat.texture["bodyH"])
-	defer rl.UnloadTexture(cat.texture["tailV"])
-	defer rl.UnloadTexture(cat.texture["tailH"])
+	cat.texture = map[string]rl.Texture2D{
+		"head":   rl.LoadTexture("./assets/cathead.png"),
+		"bodyV":  rl.LoadTexture("./assets/catbodyV.png"),
+		"bodyH":  rl.LoadTexture("./assets/catbodyH.png"),
+		"sideTL": rl.LoadTexture("./assets/sideTL.png"),
+		"sideTR": rl.LoadTexture("./assets/sideTR.png"),
+		"sideBL": rl.LoadTexture("./assets/sideBL.png"),
+		"sideBR": rl.LoadTexture("./assets/sideBR.png"),
+		"tailV":  rl.LoadTexture("./assets/catbuttV.png"),
+		"tailH":  rl.LoadTexture("./assets/catbuttH.png"),
+	}
+	for _, texture := range cat.texture {
+		defer rl.UnloadTexture(texture)
+	}
 
 	food := new(Food)
 	food.src = rl.NewRectangle(0, 0, 48, 32)
