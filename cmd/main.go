@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"slices"
 	"strconv"
@@ -99,17 +98,10 @@ func isCorner(prev, mid rl.Vector2) bool {
 	return true
 }
 
-func addTurnTexture(textures map[string]rl.Texture2D, prev, corner rl.Vector2) rl.Texture2D {
+func addTurnTexture(textures map[string]rl.Texture2D, prev rl.Vector2) rl.Texture2D {
 	if prev.Y == -1 {
-		if corner.X == 1 {
-			log.Println(corner.X)
-			return textures["sideTR"]
-		}
 		return textures["sideTL"]
 	} else if prev.Y == 1 {
-		if prev.X == 1 {
-			return textures["sideBR"]
-		}
 		return textures["sideBL"]
 	} else {
 		if prev.X == 1 {
@@ -139,7 +131,7 @@ func (c *Cat) draw() {
 				mid  = block.dir
 			)
 			if i != 0 && i != len(c.blocks)-1 && isCorner(prev, mid) {
-				texture = addTurnTexture(c.texture, prev, mid)
+				texture = addTurnTexture(c.texture, prev)
 			} else {
 				if block.dir.X == 0 {
 					texture = c.texture["bodyV"]
@@ -264,7 +256,6 @@ func main() {
 		"bodyV":  rl.LoadTexture("./assets/catbodyV.png"),
 		"bodyH":  rl.LoadTexture("./assets/catbodyH.png"),
 		"sideTL": rl.LoadTexture("./assets/sideTL.png"),
-		"sideTR": rl.LoadTexture("./assets/sideTR.png"),
 		"sideBL": rl.LoadTexture("./assets/sideBL.png"),
 		"sideBR": rl.LoadTexture("./assets/sideBR.png"),
 		"tailV":  rl.LoadTexture("./assets/catbuttV.png"),
